@@ -17,7 +17,7 @@ public class ShareMenuReactView: NSObject {
     }
 
     public static func attachViewDelegate(_ delegate: ReactShareViewDelegate!) {
-        guard (ShareMenuReactView.viewDelegate == nil) else { return }
+        // guard (ShareMenuReactView.viewDelegate == nil) else { return }
 
         ShareMenuReactView.viewDelegate = delegate
     }
@@ -102,15 +102,15 @@ public class ShareMenuReactView: NSObject {
         var dataProvider:NSItemProvider! = nil
 
         for provider in attachments {
-            if provider.hasItemConformingToTypeIdentifier(kUTTypeURL as String) {
+            if provider.hasItemConformingToTypeIdentifier(kUTTypeURL as String) 
+                && !provider.hasItemConformingToTypeIdentifier(kUTTypeFileURL as String) {
                 urlProvider = provider as? NSItemProvider
                 break
+            } else if provider.hasItemConformingToTypeIdentifier(kUTTypeImage as String)
+             || provider.hasItemConformingToTypeIdentifier(kUTTypeJPEG as String) {
+                imageProvider = provider as? NSItemProvider
             } else if provider.hasItemConformingToTypeIdentifier(kUTTypeText as String) {
                 textProvider = provider as? NSItemProvider
-                break
-            } else if provider.hasItemConformingToTypeIdentifier(kUTTypeImage as String) {
-                imageProvider = provider as? NSItemProvider
-                break
             } else if provider.hasItemConformingToTypeIdentifier(kUTTypeData as String) {
                 dataProvider = provider as? NSItemProvider
                 break
@@ -124,6 +124,7 @@ public class ShareMenuReactView: NSObject {
                 callback(url.absoluteString, "text/plain", nil)
             }
         } else if (imageProvider != nil) {
+            print("Error: \(imageProvider)")
             imageProvider.loadItem(forTypeIdentifier: kUTTypeImage as String, options: nil) { (item, error) in
                 let imageUrl: URL! = item as? URL
 

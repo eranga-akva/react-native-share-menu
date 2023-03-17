@@ -78,7 +78,7 @@ class ShareViewController: SLComposeServiceViewController {
       print("Error: \(NO_INFO_PLIST_INDENTIFIER_ERROR)")
       return
     }
-    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
       print("Error: \(NO_APP_GROUP_ERROR)")
       return
     }
@@ -91,7 +91,7 @@ class ShareViewController: SLComposeServiceViewController {
       print("Error: \(NO_INFO_PLIST_INDENTIFIER_ERROR)")
       return
     }
-    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
       print("Error: \(NO_APP_GROUP_ERROR)")
       return
     }
@@ -113,7 +113,7 @@ class ShareViewController: SLComposeServiceViewController {
         self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
         return
       }
-      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
         self.exit(withError: NO_APP_GROUP_ERROR)
         return
       }
@@ -140,7 +140,7 @@ class ShareViewController: SLComposeServiceViewController {
         self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
         return
       }
-      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
         self.exit(withError: NO_APP_GROUP_ERROR)
         return
       }
@@ -159,20 +159,31 @@ class ShareViewController: SLComposeServiceViewController {
         self.exit(withError: error.debugDescription)
         return
       }
-      guard let url = data as? URL else {
-        self.exit(withError: COULD_NOT_FIND_IMG_ERROR)
-        return
+      var url:URL! = nil;
+      let imgData: UIImage! = data as? UIImage;
+      if (imgData != nil) {
+        guard let imageURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("TemporaryScreenshot.png") else {
+            return
+        }
+        url = imageURL;
+      } else {
+        guard let currentUrl = data as? URL else {
+          self.exit(withError: COULD_NOT_FIND_IMG_ERROR)
+          return
+        }
+        url = currentUrl;
       }
+      
       guard let hostAppId = self.hostAppId else {
         self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
         return
       }
-      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
         self.exit(withError: NO_APP_GROUP_ERROR)
         return
       }
       guard let groupFileManagerContainer = FileManager.default
-              .containerURL(forSecurityApplicationGroupIdentifier: "group.\(hostAppId)")
+              .containerURL(forSecurityApplicationGroupIdentifier: "group.\(hostAppId).vmoon")
       else {
         self.exit(withError: NO_APP_GROUP_ERROR)
         return
