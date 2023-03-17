@@ -61,7 +61,7 @@ class ShareViewController: SLComposeServiceViewController {
         self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
         return
       }
-      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
         self.exit(withError: NO_APP_GROUP_ERROR)
         return
       }
@@ -107,7 +107,7 @@ class ShareViewController: SLComposeServiceViewController {
       print("Error: \(NO_INFO_PLIST_INDENTIFIER_ERROR)")
       return
     }
-    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
       print("Error: \(NO_APP_GROUP_ERROR)")
       return
     }
@@ -120,7 +120,7 @@ class ShareViewController: SLComposeServiceViewController {
       print("Error: \(NO_INFO_PLIST_INDENTIFIER_ERROR)")
       return
     }
-    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
       print("Error: \(NO_APP_GROUP_ERROR)")
       return
     }

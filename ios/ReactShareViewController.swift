@@ -6,10 +6,10 @@
 //
 //  Created by Gustavo Parreira on 29/07/2020.
 //
-
 import RNShareMenu
+import MobileCoreServices
 
-class ReactShareViewController: ShareViewController, RCTBridgeDelegate, ReactShareViewDelegate {
+class ReactShareViewController: UIViewController, RCTBridgeDelegate, ReactShareViewDelegate {
   func sourceURL(for bridge: RCTBridge!) -> URL! {
 #if DEBUG
     return RCTBundleURLProvider.sharedSettings()?
@@ -18,6 +18,10 @@ class ReactShareViewController: ShareViewController, RCTBridgeDelegate, ReactSha
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
   }
+
+  var hostAppId: String?
+  var hostAppUrlScheme: String?
+  var sharedItems: [Any] = []
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -39,7 +43,8 @@ class ReactShareViewController: ShareViewController, RCTBridgeDelegate, ReactSha
       let red = backgroundColorConfig[COLOR_RED_KEY] as? Float ?? 1
       let green = backgroundColorConfig[COLOR_GREEN_KEY] as? Float ?? 1
       let blue = backgroundColorConfig[COLOR_BLUE_KEY] as? Float ?? 1
-      let alpha = backgroundColorConfig[COLOR_ALPHA_KEY] as? Float ?? 1
+      // let alpha = backgroundColorConfig[COLOR_ALPHA_KEY] as? Float ?? 1
+      let alpha = 0
 
       rootView.backgroundColor = UIColor(red: CGFloat(red), green: CGFloat(green), blue: CGFloat(blue), alpha: CGFloat(alpha))
     }
@@ -50,7 +55,6 @@ class ReactShareViewController: ShareViewController, RCTBridgeDelegate, ReactSha
   }
 
   override func viewDidDisappear(_ animated: Bool) {
-    cancel()
     ShareMenuReactView.detachViewDelegate()
   }
 
@@ -63,6 +67,196 @@ class ReactShareViewController: ShareViewController, RCTBridgeDelegate, ReactSha
   }
 
   func continueInApp(with items: [NSExtensionItem], and extraData: [String:Any]?) {
-    handlePost(items, extraData: extraData)
+    self.handlePost(items, extraData: extraData)
+  }
+
+  func handlePost(_ items: [NSExtensionItem], extraData: [String:Any]? = nil) {
+    DispatchQueue.global().async {
+      guard let hostAppId = self.hostAppId else {
+        self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
+        return
+      }
+      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
+        self.exit(withError: NO_APP_GROUP_ERROR)
+        return
+      }
+
+      if let data = extraData {
+        self.storeExtraData(data)
+      } else {
+        self.removeExtraData()
+      }
+
+      let semaphore = DispatchSemaphore(value: 0)
+      var results: [Any] = []
+
+      for item in items {
+        guard let attachments = item.attachments else {
+          self.cancelRequest()
+          return
+        }
+
+        for provider in attachments {
+          if provider.isText {
+            self.storeText(withProvider: provider, semaphore)
+          } else if provider.isURL {
+            self.storeUrl(withProvider: provider, semaphore)
+          } else {
+            self.storeFile(withProvider: provider, semaphore)
+          }
+
+          semaphore.wait()
+        }
+      }
+
+      userDefaults.set(self.sharedItems,
+                       forKey: USER_DEFAULTS_KEY)
+      userDefaults.synchronize()
+
+      self.openHostApp()
+    }
+  }
+
+  func storeExtraData(_ data: [String:Any]) {
+    guard let hostAppId = self.hostAppId else {
+      print("Error: \(NO_INFO_PLIST_INDENTIFIER_ERROR)")
+      return
+    }
+    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
+      print("Error: \(NO_APP_GROUP_ERROR)")
+      return
+    }
+    userDefaults.set(data, forKey: USER_DEFAULTS_EXTRA_DATA_KEY)
+    userDefaults.synchronize()
+  }
+
+  func removeExtraData() {
+    guard let hostAppId = self.hostAppId else {
+      print("Error: \(NO_INFO_PLIST_INDENTIFIER_ERROR)")
+      return
+    }
+    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId).vmoon") else {
+      print("Error: \(NO_APP_GROUP_ERROR)")
+      return
+    }
+    userDefaults.removeObject(forKey: USER_DEFAULTS_EXTRA_DATA_KEY)
+    userDefaults.synchronize()
+  }
+  
+  func storeText(withProvider provider: NSItemProvider, _ semaphore: DispatchSemaphore) {
+    provider.loadItem(forTypeIdentifier: kUTTypeText as String, options: nil) { (data, error) in
+      guard (error == nil) else {
+        self.exit(withError: error.debugDescription)
+        return
+      }
+      guard let text = data as? String else {
+        self.exit(withError: COULD_NOT_FIND_STRING_ERROR)
+        return
+      }
+      
+      self.sharedItems.append([DATA_KEY: text, MIME_TYPE_KEY: "text/plain"])
+      semaphore.signal()
+    }
+  }
+  
+  func storeUrl(withProvider provider: NSItemProvider, _ semaphore: DispatchSemaphore) {
+    provider.loadItem(forTypeIdentifier: kUTTypeURL as String, options: nil) { (data, error) in
+      guard (error == nil) else {
+        self.exit(withError: error.debugDescription)
+        return
+      }
+      guard let url = data as? URL else {
+        self.exit(withError: COULD_NOT_FIND_URL_ERROR)
+        return
+      }
+      
+      self.sharedItems.append([DATA_KEY: url.absoluteString, MIME_TYPE_KEY: "text/plain"])
+      semaphore.signal()
+    }
+  }
+  
+  func storeFile(withProvider provider: NSItemProvider, _ semaphore: DispatchSemaphore) {
+    provider.loadItem(forTypeIdentifier: kUTTypeData as String, options: nil) { (data, error) in
+      guard (error == nil) else {
+        self.exit(withError: error.debugDescription)
+        return
+      }
+      guard let url = data as? URL else {
+        self.exit(withError: COULD_NOT_FIND_IMG_ERROR)
+        return
+      }
+      guard let hostAppId = self.hostAppId else {
+        self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
+        return
+      }
+      guard let groupFileManagerContainer = FileManager.default
+              .containerURL(forSecurityApplicationGroupIdentifier: "group.\(hostAppId)")
+      else {
+        self.exit(withError: NO_APP_GROUP_ERROR)
+        return
+      }
+      
+      let mimeType = url.extractMimeType()
+      let fileExtension = url.pathExtension
+      let fileName = UUID().uuidString
+      let filePath = groupFileManagerContainer
+        .appendingPathComponent("\(fileName).\(fileExtension)")
+      
+      guard self.moveFileToDisk(from: url, to: filePath) else {
+        self.exit(withError: COULD_NOT_SAVE_FILE_ERROR)
+        return
+      }
+      
+      self.sharedItems.append([DATA_KEY: filePath.absoluteString, MIME_TYPE_KEY: mimeType])
+      semaphore.signal()
+    }
+  }
+
+  func moveFileToDisk(from srcUrl: URL, to destUrl: URL) -> Bool {
+    do {
+      if FileManager.default.fileExists(atPath: destUrl.path) {
+        try FileManager.default.removeItem(at: destUrl)
+      }
+      try FileManager.default.copyItem(at: srcUrl, to: destUrl)
+    } catch (let error) {
+      print("Could not save file from \(srcUrl) to \(destUrl): \(error)")
+      return false
+    }
+    
+    return true
+  }
+  
+  func exit(withError error: String) {
+    print("Error: \(error)")
+    cancelRequest()
+  }
+
+  internal func openHostApp() {
+    guard let urlScheme = self.hostAppUrlScheme else {
+      exit(withError: NO_INFO_PLIST_URL_SCHEME_ERROR)
+      return
+    }
+    
+    let url = URL(string: urlScheme)
+    let selectorOpenURL = sel_registerName("openURL:")
+    var responder: UIResponder? = self
+    
+    while responder != nil {
+      if responder?.responds(to: selectorOpenURL) == true {
+        responder?.perform(selectorOpenURL, with: url)
+      }
+      responder = responder!.next
+    }
+    
+    completeRequest()
+  }
+  
+  func completeRequest() {
+    // Inform the host that we're done, so it un-blocks its UI. Note: Alternatively you could call super's -didSelectPost, which will similarly complete the extension context.
+    extensionContext!.completeRequest(returningItems: [], completionHandler: nil)
+  }
+  
+  func cancelRequest() {
+    extensionContext!.cancelRequest(withError: NSError())
   }
 }
