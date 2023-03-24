@@ -25,7 +25,19 @@ class ReactShareViewController: UIViewController, RCTBridgeDelegate, ReactShareV
 
   override func viewDidLoad() {
     super.viewDidLoad()
-
+    
+    if let hostAppId = Bundle.main.object(forInfoDictionaryKey: HOST_APP_IDENTIFIER_INFO_PLIST_KEY) as? String {
+      self.hostAppId = hostAppId
+    } else {
+      print("Error: \(NO_INFO_PLIST_INDENTIFIER_ERROR)")
+    }
+    
+    if let hostAppUrlScheme = Bundle.main.object(forInfoDictionaryKey: HOST_URL_SCHEME_INFO_PLIST_KEY) as? String {
+      self.hostAppUrlScheme = hostAppUrlScheme
+    } else {
+      print("Error: \(NO_INFO_PLIST_URL_SCHEME_ERROR)")
+    }
+    
     let bridge: RCTBridge! = RCTBridge(delegate: self, launchOptions: nil)
     let rootView = RCTRootView(
       bridge: bridge,
