@@ -25,13 +25,13 @@ class ReactShareViewController: UIViewController, RCTBridgeDelegate, ReactShareV
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    
+
     if let hostAppId = Bundle.main.object(forInfoDictionaryKey: HOST_APP_IDENTIFIER_INFO_PLIST_KEY) as? String {
       self.hostAppId = hostAppId
     } else {
       print("Error: \(NO_INFO_PLIST_INDENTIFIER_ERROR)")
     }
-    
+      
     if let hostAppUrlScheme = Bundle.main.object(forInfoDictionaryKey: HOST_URL_SCHEME_INFO_PLIST_KEY) as? String {
       self.hostAppUrlScheme = hostAppUrlScheme
     } else {
@@ -193,10 +193,22 @@ class ReactShareViewController: UIViewController, RCTBridgeDelegate, ReactShareV
         self.exit(withError: error.debugDescription)
         return
       }
-      guard let url = data as? URL else {
-        self.exit(withError: COULD_NOT_FIND_IMG_ERROR)
-        return
+      
+      var url:URL! = nil;
+      let imgData: UIImage! = data as? UIImage;
+      if (imgData != nil) {
+        guard let imageURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("TemporaryScreenshot.jpeg") else {
+            return
+        }
+        url = imageURL;
+      } else {
+        guard let currentUrl = data as? URL else {
+          self.exit(withError: COULD_NOT_FIND_IMG_ERROR)
+          return
+        }
+        url = currentUrl;
       }
+      
       guard let hostAppId = self.hostAppId else {
         self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
         return
