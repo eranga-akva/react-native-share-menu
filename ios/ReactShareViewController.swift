@@ -202,7 +202,7 @@ class ReactShareViewController: UIViewController, RCTBridgeDelegate, ReactShareV
         return
       }
       guard let groupFileManagerContainer = FileManager.default
-              .containerURL(forSecurityApplicationGroupIdentifier: "group.\(hostAppId)")
+              .containerURL(forSecurityApplicationGroupIdentifier: "group.\(hostAppId).vmoon")
       else {
         self.exit(withError: NO_APP_GROUP_ERROR)
         return
