@@ -106,7 +106,8 @@ public class ShareMenuReactView: NSObject {
                 }
 
                 for provider in attachments {
-                    if provider.hasItemConformingToTypeIdentifier(kUTTypeURL as String) {
+                    if provider.hasItemConformingToTypeIdentifier(kUTTypeURL as String) 
+                    && !provider.hasItemConformingToTypeIdentifier(kUTTypeFileURL as String {
                         provider.loadItem(forTypeIdentifier: kUTTypeURL as String, options: nil) { (item, error) in
                             let url: URL! = item as? URL
 
