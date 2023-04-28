@@ -105,9 +105,10 @@ public class ShareMenuReactView: NSObject {
                     return
                 }
 
-                for provider in attachments {
+                for (itemIndex, provider) in attachments.enumerated() {
                     if provider.hasItemConformingToTypeIdentifier(kUTTypeURL as String) 
-                    && !provider.hasItemConformingToTypeIdentifier(kUTTypeFileURL as String) {
+                    && !provider.hasItemConformingToTypeIdentifier(kUTTypeFileURL as String)
+                    {
                         provider.loadItem(forTypeIdentifier: kUTTypeURL as String, options: nil) { (item, error) in
                             let url: URL! = item as? URL
 
@@ -128,7 +129,7 @@ public class ShareMenuReactView: NSObject {
                     } else if provider.hasItemConformingToTypeIdentifier(kUTTypeImage as String) {
                         provider.loadItem(forTypeIdentifier: kUTTypeImage as String, options: nil) { (item, error) in
                             let imageUrl: URL! = item as? URL
-
+                            let compressionQuality: CGFloat = 0.5
                             if (imageUrl != nil) {
                                 if let imageData = try? Data(contentsOf: imageUrl) {
                                     results.append([DATA_KEY: imageUrl.absoluteString, MIME_TYPE_KEY: self.extractMimeType(from: imageUrl)])
@@ -137,10 +138,10 @@ public class ShareMenuReactView: NSObject {
                                 let image: UIImage! = item as? UIImage
 
                                 if (image != nil) {
-                                    let imageData: Data! = image.pngData();
+                                    let imageData: Data! = image.jpegData(compressionQuality: compressionQuality);
 
                                     // Creating temporary URL for image data (UIImage)
-                                    guard let imageURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("TemporaryScreenshot.png") else {
+                                    guard let imageURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(String(itemIndex) + "TemporaryScreenshot.jpeg") else {
                                         return
                                     }
 
