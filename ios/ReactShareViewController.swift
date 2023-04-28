@@ -108,13 +108,13 @@ class ReactShareViewController: UIViewController, RCTBridgeDelegate, ReactShareV
           return
         }
 
-        for provider in attachments {
+        for (index, provider) in attachments.enumerated() {
           if provider.isText {
             self.storeText(withProvider: provider, semaphore)
           } else if provider.isURL {
             self.storeUrl(withProvider: provider, semaphore)
           } else {
-            self.storeFile(withProvider: provider, semaphore)
+            self.storeFile(withProvider: provider, semaphore, itemIndex: index)
           }
 
           semaphore.wait()
@@ -187,7 +187,7 @@ class ReactShareViewController: UIViewController, RCTBridgeDelegate, ReactShareV
     }
   }
   
-  func storeFile(withProvider provider: NSItemProvider, _ semaphore: DispatchSemaphore) {
+  func storeFile(withProvider provider: NSItemProvider, _ semaphore: DispatchSemaphore, itemIndex: Int = 1) {
     provider.loadItem(forTypeIdentifier: kUTTypeData as String, options: nil) { (data, error) in
       guard (error == nil) else {
         self.exit(withError: error.debugDescription)
@@ -197,7 +197,7 @@ class ReactShareViewController: UIViewController, RCTBridgeDelegate, ReactShareV
       var url:URL! = nil;
       let imgData: UIImage! = data as? UIImage;
       if (imgData != nil) {
-        guard let imageURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("TemporaryScreenshot.jpeg") else {
+        guard let imageURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(String(itemIndex) + "TemporaryScreenshot.jpeg") else {
             return
         }
         url = imageURL;
