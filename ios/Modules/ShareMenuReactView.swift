@@ -7,6 +7,7 @@
 
 import Foundation
 import MobileCoreServices
+import Vision
 
 @objc(ShareMenuReactView)
 public class ShareMenuReactView: NSObject {
@@ -130,14 +131,23 @@ public class ShareMenuReactView: NSObject {
                         provider.loadItem(forTypeIdentifier: kUTTypeImage as String, options: nil) { (item, error) in
                             let imageUrl: URL! = item as? URL
                             let compressionQuality: CGFloat = 0.5
+                            var recognizedTextOuterScope: String = ""
                             if (imageUrl != nil) {
                                 if let imageData = try? Data(contentsOf: imageUrl) {
-                                    results.append([DATA_KEY: imageUrl.absoluteString, MIME_TYPE_KEY: self.extractMimeType(from: imageUrl)])
+                                    if let image = UIImage(data: imageData) {
+                                        self.processImage(image) { recognizedText in
+                                            recognizedTextOuterScope = recognizedText
+                                        }
+                                    }
+                                    results.append([DATA_KEY: imageUrl.absoluteString, MIME_TYPE_KEY: self.extractMimeType(from: imageUrl), DETECTED_TEXT: recognizedTextOuterScope])
                                 }
                             } else {
                                 let image: UIImage! = item as? UIImage
 
                                 if (image != nil) {
+                                    self.processImage(image) { recognizedText in
+                                        recognizedTextOuterScope = recognizedText
+                                    }
                                     let imageData: Data! = image.jpegData(compressionQuality: compressionQuality);
 
                                     // Creating temporary URL for image data (UIImage)
@@ -149,7 +159,7 @@ public class ShareMenuReactView: NSObject {
                                         // Writing the image to the URL
                                         try imageData.write(to: imageURL)
 
-                                        results.append([DATA_KEY: imageURL.absoluteString, MIME_TYPE_KEY: imageURL.extractMimeType()])
+                                        results.append([DATA_KEY: imageURL.absoluteString, MIME_TYPE_KEY: imageURL.extractMimeType(), DETECTED_TEXT: recognizedTextOuterScope])
                                     } catch {
                                         callback(nil, NSException(name: NSExceptionName(rawValue: "Error"), reason:"Can't load image", userInfo:nil))
                                     }
@@ -190,5 +200,47 @@ public class ShareMenuReactView: NSObject {
       else { return "" }
 
       return mimeUTI.takeUnretainedValue() as String
+    }
+    
+    func processImage(_ image: UIImage, completion: @escaping (String) -> Void) {
+
+        guard let cgImage = image.cgImage else {
+            print("Failed to convert UIImage to CGImage.")
+            return
+        }
+
+        if #available(iOS 13.0, *) {
+            let request = VNRecognizeTextRequest { (request, error) in
+                if let error = error {
+                    print("Text recognition error: \(error.localizedDescription)")
+                    completion("") // Return empty string in case of error
+                    return
+                }
+
+                guard let observations = request.results as? [VNRecognizedTextObservation] else {
+                    print("Failed to get text recognition results.")
+                    completion("") // Return empty string if no results
+                    return
+                }
+
+                var recognizedText = ""
+                for observation in observations {
+                    guard let topCandidate = observation.topCandidates(1).first else { continue }
+                    recognizedText += topCandidate.string + "\n"
+                }
+
+                completion(recognizedText) // Return recognized text
+            }
+            let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+
+            do {
+                try requestHandler.perform([request])
+            } catch {
+                print("Text recognition request failed: \(error.localizedDescription)")
+                completion("") // Return empty string in case of failure
+            }
+        } else {
+            completion("")
+        }
     }
 }
